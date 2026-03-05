@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
+}
+
+model Company {
+  companyId Int      @id @default(autoincrement())
+  name      String
+  address   String
+  number    String
+  email     String
+  createAt  DateTime @default(now())
+  updateAt  DateTime @updatedAt
+
+  suppliers Supplier[]
+
+  @@map("company")
+}
+
+model Supplier {
+  supplierId Int      @id @default(autoincrement())
+  name       String
+  number     String
+  address    String
+  email      String
+  companyId  Int
+  createAt   DateTime @default(now())
+  updateAt   DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [companyId])
+
+  products Products[]
+
+  @@map("supplier")
+}
+
+model Products {
+  productId    Int      @id @default(autoincrement())
+  supplierId    Int
+  name         String
+  warranty     String
+  buyPrice     Int
+  sellingPrice Int
+  quantity     Int
+  alert        Int
+  createAt     DateTime @default(now())
+  updateAt     DateTime @updatedAt
+
+  supplier     Supplier      @relation(fields: [supplierId], references: [supplierId])
+  ordersItems OrderItems[]
+
+  @@map("products")
+}
+
+model Customer {
+  customerId Int      @id @default(autoincrement())
+  name       String
+  email      String
+  number     String
+  address    String
+  createAt   DateTime @default(now())
+  updateAt   DateTime @updatedAt
+
+  orders      Orders[]
+  ordersItems OrderItems[]
+
+  @@map("customer")
+}
+
+model Orders {
+  orderId    Int      @id @default(autoincrement())
+  customerId Int
+  totalPrice Int
+  createAt   DateTime @default(now())
+  updateAt   DateTime @updatedAt
+
+  customer    Customer     @relation(fields: [customerId], references: [customerId])
+  ordersItems OrderItems[]
+
+  @@map("orders")
+}
+
+model OrderItems {
+  orderItemId Int @id @default(autoincrement())
+  orderId     Int
+  productId   Int
+  customerId  Int
+  quantity    Int
+  customizePrise Int
+  subTotal    Int
+
+  order    Orders   @relation(fields: [orderId], references: [orderId])
+  product  Products @relation(fields: [productId], references: [productId])
+  customer Customer @relation(fields: [customerId], references: [customerId])
+
+  createAt DateTime @default(now())
+  updateAt DateTime @updatedAt
+}
