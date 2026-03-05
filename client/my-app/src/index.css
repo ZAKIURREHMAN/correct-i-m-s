@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .table-scroll {
+    overflow: auto;
+    margin: 0 auto;
+    max-height: 60vh;
+    -webkit-overflow-scrolling: touch;
+  }
+}
