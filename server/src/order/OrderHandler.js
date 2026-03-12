@@ -1,64 +1,74 @@
 import { prisma } from "../config/db.js";
 
 export const createOrder = async ({ customerId, totalPrice, paidAmount = 0 }) => {
-  // Verify customer exists
-  const customer = await prisma.customer.findUnique({ where: { customerId } });
-  if (!customer) {
-    return { status: 404, message: "Customer not found" };
-  }
+  try {
+    // Verify customer exists
+    const customer = await prisma.customer.findUnique({ where: { customerId } });
+    if (!customer) {
+      return { status: 404, message: "Customer not found" };
+    }
 
-  // Validate payment amount
-  if (paidAmount < 0) {
-    return { status: 400, message: "Paid amount cannot be negative" };
-  }
-  
-  if (paidAmount > totalPrice) {
-    return { status: 400, message: "Paid amount cannot exceed total price" };
-  }
+    // Validate payment amount
+    if (paidAmount < 0) {
+      return { status: 400, message: "Paid amount cannot be negative" };
+    }
+    
+    if (paidAmount > totalPrice) {
+      return { status: 400, message: "Paid amount cannot exceed total price" };
+    }
 
-  // Calculate pending amount
-  const pendingAmount = totalPrice - paidAmount;
-  const isPaid = pendingAmount === 0;
+    // Calculate pending amount
+    const pendingAmount = totalPrice - paidAmount;
+    const isPaid = pendingAmount === 0;
 
-  // Check if customer already has an existing order
-  const existingOrder = await prisma.orders.findFirst({
-    where: { customerId },
-    orderBy: { createAt: 'desc' }
-  });
+    // Check if customer already has an existing order (within last 24 hours)
+    const existingOrder = await prisma.orders.findFirst({
+      where: { 
+        customerId,
+        createAt: {
+          gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+        }
+      },
+      orderBy: { createAt: 'desc' }
+    });
 
-  // If customer has existing order, update it instead of creating new one
-  if (existingOrder) {
-    const updatedOrder = await prisma.orders.update({
-      where: { orderId: existingOrder.orderId },
+    // If customer has existing order from today, update it instead of creating new one
+    if (existingOrder) {
+      const updatedOrder = await prisma.orders.update({
+        where: { orderId: existingOrder.orderId },
+        data: {
+          totalPrice: existingOrder.totalPrice + totalPrice,
+          paidAmount: existingOrder.paidAmount + paidAmount,
+          pendingAmount: existingOrder.pendingAmount + pendingAmount,
+          isPaid: existingOrder.isPaid && isPaid,
+          updateAt: new Date()
+        },
+      });
+
+      return { 
+        status: 200, 
+        message: "order updated successfully (added to existing order)", 
+        data: updatedOrder,
+        existingOrder: true
+      };
+    }
+
+    // Create new order for new customer
+    const order = await prisma.orders.create({
       data: {
-        totalPrice: existingOrder.totalPrice + totalPrice,
-        paidAmount: existingOrder.paidAmount + paidAmount,
-        pendingAmount: existingOrder.pendingAmount + pendingAmount,
-        isPaid: existingOrder.isPaid && isPaid,
-        updateAt: new Date()
+        customerId,
+        totalPrice,
+        paidAmount,
+        pendingAmount,
+        isPaid,
       },
     });
 
-    return { 
-      status: 200, 
-      message: "order updated successfully (added to existing order)", 
-      data: updatedOrder,
-      existingOrder: true
-    };
+    return { status: 201, message: "order created successfully", data: order, existingOrder: false };
+  } catch (error) {
+    console.error("createOrderHandler error:", error);
+    return { status: 500, message: "Failed to create or update order", data: null };
   }
-
-  // Create new order for new customer
-  const order = await prisma.orders.create({
-    data: {
-      customerId,
-      totalPrice,
-      paidAmount,
-      pendingAmount,
-      isPaid,
-    },
-  });
-
-  return { status: 201, message: "order created successfully", data: order, existingOrder: false };
 };
 
 export const updateOrder = async ({ orderId, customerId, totalPrice }) => {

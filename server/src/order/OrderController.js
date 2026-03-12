@@ -8,16 +8,63 @@ import {
 
 export const createOrder = async (req, res) => {
   try {
-    const { customerId, totalPrice } = req.body || {};
+    const { customerId, totalPrice, paidAmount = 0, items = [] } = req.body || {};
+    
+    // Input validation
+    if (!customerId || !totalPrice) {
+      return res.status(400).json({ 
+        status: 400, 
+        message: "Missing required fields: customerId and totalPrice are required" 
+      });
+    }
+
+    // Parse and validate numeric values
     const cid = parseInt(customerId, 10);
     const tp = parseInt(totalPrice, 10);
-    if (!cid || Number.isNaN(cid) || !tp || Number.isNaN(tp)) {
-      return res.status(400).json({ message: "valid customerId and totalPrice are required" });
+    const pa = parseInt(paidAmount, 10) || 0;
+
+    if (Number.isNaN(cid) || cid <= 0) {
+      return res.status(400).json({ 
+        status: 400, 
+        message: "Invalid customerId: must be a positive integer" 
+      });
     }
-    const result = await createOrderHandler({ customerId: cid, totalPrice: tp });
+
+    if (Number.isNaN(tp) || tp < 0) {
+      return res.status(400).json({ 
+        status: 400, 
+        message: "Invalid totalPrice: must be a non-negative integer" 
+      });
+    }
+
+    if (Number.isNaN(pa) || pa < 0) {
+      return res.status(400).json({ 
+        status: 400, 
+        message: "Invalid paidAmount: must be a non-negative integer" 
+      });
+    }
+
+    if (pa > tp) {
+      return res.status(400).json({ 
+        status: 400, 
+        message: "Paid amount cannot exceed total price" 
+      });
+    }
+
+    // Create the order
+    const result = await createOrderHandler({ 
+      customerId: cid, 
+      totalPrice: tp, 
+      paidAmount: pa 
+    });
+    
     return res.status(result.status).json(result);
   } catch (err) {
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("createOrder error:", err);
+    return res.status(500).json({ 
+      status: 500, 
+      message: "Internal server error: Failed to create order" 
+    });
   }
 };
 
