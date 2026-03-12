@@ -82,6 +82,9 @@ model Orders {
   orderId    Int      @id @default(autoincrement())
   customerId Int
   totalPrice Int
+  paidAmount Int      @default(0)
+  pendingAmount Int   @default(0)
+  isPaid     Boolean  @default(false)
   createAt   DateTime @default(now())
   updateAt   DateTime @updatedAt
 

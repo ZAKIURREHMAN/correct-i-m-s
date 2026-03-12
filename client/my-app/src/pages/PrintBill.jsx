@@ -24,6 +24,7 @@ function PrintBill() {
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState("");
   const [billOrderId, setBillOrderId] = React.useState(state?.orderId ? String(state.orderId) : "");
+  const [paidAmount, setPaidAmount] = React.useState(grandTotal); // Default to full payment
 
   React.useEffect(() => {
     const styleEl = document.createElement("style");
@@ -37,11 +38,31 @@ function PrintBill() {
 
   const onConfirmAndSave = async () => {
     if (!customerId || items.length === 0) return;
+    
+    // Validate payment amount
+    if (paidAmount < 0) {
+      setSaveError("Paid amount cannot be negative");
+      toastError("Paid amount cannot be negative");
+      return;
+    }
+    
+    if (paidAmount > grandTotal) {
+      setSaveError("Paid amount cannot exceed total bill");
+      toastError("Paid amount cannot exceed total bill");
+      return;
+    }
+    
     setSaveError("");
     setSaving(true);
     try {
-      const orderRes = await createOrder.mutateAsync({ customerId, totalPrice: Math.round(grandTotal) });
+      const orderRes = await createOrder.mutateAsync({ 
+        customerId, 
+        totalPrice: Math.round(grandTotal),
+        paidAmount: Math.round(paidAmount)
+      });
       const orderId = orderRes?.data?.orderId;
+      const isExistingOrder = orderRes?.data?.existingOrder;
+      
       if (!orderId) {
         throw new Error("Failed to create order");
       }
@@ -63,7 +84,13 @@ function PrintBill() {
 
       setBillOrderId(String(orderId));
       setSaving(false);
-      toastSuccess("Order saved. Printing bill...");
+      
+      if (isExistingOrder) {
+        toastSuccess("Order items added to existing order. Printing bill...");
+      } else {
+        toastSuccess("New order created. Printing bill...");
+      }
+      
       // Wait a tick so the DOM updates the displayed Order ID before printing
       await new Promise((resolve) => setTimeout(resolve, 100));
       window.print();
@@ -129,13 +156,15 @@ function PrintBill() {
           copyNote="Original for Recipient"
           invoiceNumber={billOrderId}
           date={new Date().toLocaleDateString()}
-          dueDate={""}
-          poNumber={""}
-          poDate={""}
+          dueDate=""
+          poNumber=""
+          poDate=""
           from={from}
           billTo={billTo}
           items={invoiceItems}
           discount={0}
+          paidAmount={paidAmount}
+          pendingAmount={grandTotal - paidAmount}
         />
       </div>
 
@@ -150,6 +179,35 @@ function PrintBill() {
         >
           ❌ Cancel
         </button>
+        
+        {/* Payment Input Section */}
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col">
+            <label htmlFor="paidAmount" className="text-sm font-medium text-gray-700 mb-1">
+              Amount Paid (PKR)
+            </label>
+            <input
+              id="paidAmount"
+              type="number"
+              min="0"
+              max={grandTotal}
+              value={paidAmount}
+              onChange={(e) => setPaidAmount(Number(e.target.value))}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="Enter amount paid"
+              disabled={saving || customerLoading}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Total Bill: PKR {grandTotal.toLocaleString()}
+            </p>
+            {paidAmount < grandTotal && (
+              <p className="text-xs text-orange-600 mt-1">
+                Pending: PKR {(grandTotal - paidAmount).toLocaleString()}
+              </p>
+            )}
+          </div>
+        </div>
+        
         <div className="flex gap-3">
           <button
             onClick={onConfirmAndSave}

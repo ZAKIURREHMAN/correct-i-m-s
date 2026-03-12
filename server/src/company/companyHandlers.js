@@ -37,6 +37,32 @@ export const getOrganizations = async () => {
   return companies;
 };
 
+export const searchCompanies = async ({ query }) => {
+  if (!query) {
+    const companies = await prisma.company.findMany();
+    return companies;
+  }
+
+  // Try to parse as number for ID search
+  const idQuery = parseInt(query);
+  const isNumericId = !isNaN(idQuery);
+
+  const companies = await prisma.company.findMany({
+    where: {
+      OR: [
+        // Search by ID (only if query is numeric)
+        ...(isNumericId ? [{ companyId: { equals: idQuery } }] : []),
+        // Search by name (case insensitive using toLowerCase)
+        { name: { contains: query.toLowerCase() } },
+        // Search by number/contact (case insensitive using toLowerCase)
+        { number: { contains: query.toLowerCase() } },
+      ],
+    },
+  });
+
+  return companies;
+};
+
 // Suppliers: create, update, delete, list (scoped to company)
 export const createSupplier = async ({ companyId, name, address, number, email }) => {
    const company = await prisma.company.findUnique({ where: { companyId } });

@@ -1,354 +1,3 @@
-// import React, { useState } from "react";
-// import Navbar from "./Navbar";
-// import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-// import useOrganizations from "../hooks/useOrganizations";
-// import useDeleteCompany from "../hooks/useDeleteCompany";
-// import Swal from "sweetalert2";
-// import RegisterCompany from "../pages/RegisterCompany";
-// import UpdateCompany from "../pages/UpdateCompany";
-// import { toastSuccess, toastError } from "../lib/toast";
-
-// function Company() {
-//   const { getOrganizations } = useOrganizations();
-//   const [open, setOpen] = useState(false);
-//   const queryClient = useQueryClient();
-//   const [editOpen, setEditOpen] = useState(false);
-//   const [selectedCompany, setSelectedCompany] = useState(null);
-
-//   // Fetch companies
-//   const {
-//     data: companies = [],
-//     isLoading,
-//     isError,
-//     error,
-//   } = useQuery({
-//     queryKey: ["organizations"],
-//     queryFn: getOrganizations,
-//   });
-
-//   // Delete company API
-//   const { deleteCompany: deleteCompanyRequest } = useDeleteCompany();
-
-//   const { mutate: deleteCompany, isPending: isDeleting } = useMutation({
-//     mutationFn: (id) => deleteCompanyRequest(id),
-//     onSuccess: () => {
-//       queryClient.invalidateQueries({ queryKey: ["organizations"] });
-
-//       Swal.fire({
-//         title: "Deleted!",
-//         text: "Company has been deleted successfully.",
-//         icon: "success",
-//         timer: 1500,
-//         showConfirmButton: false,
-//       });
-//       toastSuccess("Company deleted successfully");
-//     },
-//     onError: (err) => {
-//       Swal.fire({
-//         title: "Error!",
-//         text: err?.message || "Failed to delete company",
-//         icon: "error",
-//       });
-//       toastError(err?.message || "Failed to delete company");
-//     },
-//   });
-
-//   // SweetAlert2 Delete Confirmation
-//   const handleDelete = (id) => {
-//     Swal.fire({
-//       title: "Are you sure?",
-//       text: "You won't be able to revert this!",
-//       icon: "warning",
-//       showCancelButton: true,
-//       confirmButtonColor: "#6366f1",
-//       cancelButtonColor: "#d33",
-//       confirmButtonText: "Yes, delete it!",
-//     }).then((result) => {
-//       if (result.isConfirmed) {
-//         deleteCompany(id);
-//       }
-//     });
-//   };
-
-//   const handleEdit = (company) => {
-//     setSelectedCompany(company);
-//     setEditOpen(true);
-//   };
-
-//   // New: Update a single product (quantity, buyPrice, sellingPrice)
-//   const updateProduct = async ({ productId, quantity, buyPrice, sellingPrice }) => {
-//     const res = await fetch(apiUrl(`products/${productId}`), {
-//       method: "PUT",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({ quantity, buyPrice, sellingPrice }),
-//     });
-//     const data = await res.json().catch(() => null);
-//     if (!res.ok) {
-//       throw new Error(data?.message || "Failed to update product");
-//     }
-//     return data;
-//   };
-
-//   const handleRowClick = async (company) => {
-//     const id = company.id ?? company.companyId;
-//     await Swal.fire({
-//       title: `${company.name} — Products`,
-//       width: "90vw",
-//       html: '<div id="products-modal-content" class="text-left">Loading products...</div>',
-//       showConfirmButton: true,
-//       confirmButtonText: "Close",
-//       didOpen: async () => {
-//         Swal.showLoading();
-//         try {
-//           const res = await fetch(`http://localhost:5000/products/by-company/${id}`);
-//           const data = await res.json().catch(() => null);
-//           if (!res.ok) {
-//             throw new Error(data?.message || "Failed to load products");
-//           }
-//           const products = Array.isArray(data?.data) ? data.data : [];
-
-//           const escapeHtml = (str) =>
-//             String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;");
-
-//           const tableHead = `
-//             <thead style="background:#f3f4f6;color:#374151;text-transform:uppercase;font-size:12px;">
-//               <tr>
-//                 <th style="padding:8px 12px;text-align:left;">ID</th>
-//                 <th style="padding:8px 12px;text-align:left;">Name</th>
-//                 <th style="padding:8px 12px;text-align:left;">Warranty</th>
-//                 <th style="padding:8px 12px;text-align:left;">Quantity</th>
-//                 <th style="padding:8px 12px;text-align:left;">Buy Price</th>
-//                 <th style="padding:8px 12px;text-align:left;">Selling Price</th>
-//                 <th style="padding:8px 12px;text-align:left;">Alert</th>
-//                 <th style="padding:8px 12px;text-align:left;">Supplier</th>
-//                 <th style="padding:8px 12px;text-align:left;">Number</th>
-//                 <th style="padding:8px 12px;text-align:left;">Address</th>
-//                 <th style="padding:8px 12px;text-align:left;">Actions</th>
-//               </tr>
-//             </thead>`;
-
-//           const rows = products
-//             .map((p) => {
-//               const pid = escapeHtml(p.productId);
-//               const name = escapeHtml(p.name);
-//               const warranty = escapeHtml(p.warranty);
-//               const qty = escapeHtml(p.quantity);
-//               const buy = escapeHtml(p.buyPrice);
-//               const sell = escapeHtml(p.sellingPrice);
-//               const alert = escapeHtml(p.alert);
-//               const supplierName = escapeHtml(p?.supplier?.name);
-//               const supplierNumber = escapeHtml(p?.supplier?.number);
-//               const supplierAddress = escapeHtml(p?.supplier?.address);
-
-//               return `
-//                 <tr data-product-id="${pid}" style="border-top:1px solid #e5e7eb;">
-//                   <td style="padding:8px 12px;">${pid}</td>
-//                   <td style="padding:8px 12px;">${name}</td>
-//                   <td style="padding:8px 12px;">${warranty}</td>
-//                   <td style="padding:8px 12px;">
-//                     <input type="number" min="0" step="1" value="${qty}" class="prod-input qty" style="width:90px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;" />
-//                   </td>
-//                   <td style="padding:8px 12px;">
-//                     <input type="number" min="0" step="0.01" value="${buy}" class="prod-input buy" style="width:110px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;" />
-//                   </td>
-//                   <td style="padding:8px 12px;">
-//                     <input type="number" min="0" step="0.01" value="${sell}" class="prod-input sell" style="width:120px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;" />
-//                   </td>
-//                   <td style="padding:8px 12px;">${alert}</td>
-//                   <td style="padding:8px 12px;">${supplierName || '-'}</td>
-//                   <td style="padding:8px 12px;">${supplierNumber || '-'}</td>
-//                   <td style="padding:8px 12px;">${supplierAddress || '-'}</td>
-//                   <td style="padding:8px 12px;">
-//                     <button class="save-product-btn" style="background:#10b981;color:white;padding:6px 12px;border-radius:6px;border:none;cursor:pointer;">Save</button>
-//                   </td>
-//                 </tr>`;
-//             })
-//             .join("");
-
-//           const html =
-//             products.length === 0
-//               ? '<p style="color:#4b5563;">No products found for this company.</p>'
-//               : `
-//                   <div style="max-height:60vh;overflow:auto;">
-//                     <table style="width:100%;font-size:14px;color:#111827;">${tableHead}<tbody>${rows}</tbody></table>
-//                   </div>
-//                 `;
-
-//           Swal.update({ html });
-
-//           // Attach save handlers after DOM is rendered
-//           const container = Swal.getHtmlContainer();
-//           if (container) {
-//             const buttons = container.querySelectorAll('.save-product-btn');
-//             buttons.forEach((btn) => {
-//               btn.addEventListener('click', async (ev) => {
-//                 const row = ev.currentTarget.closest('tr[data-product-id]');
-//                 if (!row) return;
-//                 const productId = row.getAttribute('data-product-id');
-//                 const qtyEl = row.querySelector('input.qty');
-//                 const buyEl = row.querySelector('input.buy');
-//                 const sellEl = row.querySelector('input.sell');
-//                 const payload = {
-//                   productId,
-//                   quantity: Number(qtyEl?.value || 0),
-//                   buyPrice: Number(buyEl?.value || 0),
-//                   sellingPrice: Number(sellEl?.value || 0),
-//                 };
-//                 const originalText = ev.currentTarget.textContent;
-//                 ev.currentTarget.textContent = 'Saving...';
-//                 ev.currentTarget.disabled = true;
-//                 try {
-//                   await updateProduct(payload);
-//                   // Invalidate products caches across the app
-//                   queryClient.invalidateQueries({ queryKey: ['products'] });
-//                   queryClient.invalidateQueries({ queryKey: ['products', 'list'] });
-//                   queryClient.invalidateQueries({ queryKey: ['products', 'byCompany', id] });
-
-//                   // Visual feedback
-//                   row.style.backgroundColor = '#ecfdf5';
-//                   setTimeout(() => { row.style.backgroundColor = ''; }, 900);
-
-//                   Swal.fire({
-//                     icon: 'success',
-//                     title: 'Product updated',
-//                     timer: 1200,
-//                     showConfirmButton: false,
-//                   });
-//                   toastSuccess('Product updated');
-//                 } catch (err) {
-//                   Swal.fire({
-//                     icon: 'error',
-//                     title: 'Update failed',
-//                     text: err?.message || 'Unable to update product',
-//                   });
-//                   toastError(err?.message || 'Unable to update product');
-//                 } finally {
-//                   ev.currentTarget.textContent = originalText;
-//                   ev.currentTarget.disabled = false;
-//                 }
-//               });
-//             });
-//           }
-//         } catch (err) {
-//           Swal.update({ html: `<p style=\"color:#dc2626;\">${err?.message || "Failed to load products"}</p>` });
-//         } finally {
-//           Swal.hideLoading();
-//         }
-//       },
-//     });
-//   };
-
-//   return (
-//     <div className="w-full">
-//       <Navbar />
-
-//       <div className="mt-10 px-4">
-//         {/* Top Section */}
-//         <div className="flex justify-between items-center mb-6">
-//           <h2 className="text-xl font-semibold text-gray-700">Company Management</h2>
-
-//           <button
-//             className="bg-indigo-600 text-white cursor-pointer px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
-//             onClick={() => setOpen(true)}
-//           >
-//             + Register Company
-//           </button>
-//         </div>
-
-//         {/* Table */}
-        
-//         <div className="table-scroll bg-white shadow rounded-xl border border-gray-200">
-//            <table className="w-full text-sm text-left">
-//             {/* Table Head */}
-//             <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
-//               <tr>
-//                 <th className="px-4 py-3">ID</th>
-//                 <th className="px-4 py-3">Name</th>
-//                 <th className="px-4 py-3">Address</th>
-//                 <th className="px-4 py-3">Number</th>
-//                 <th className="px-4 py-3">Email</th>
-//                 <th className="px-4 py-3">Created</th>
-//                 <th className="px-4 py-3">Update</th>
-//                 <th className="px-4 py-3 text-center">Delete</th>
-//               </tr>
-//             </thead>
-
-//             {/* Table Body */}
-//             <tbody>
-//               {isLoading ? (
-//                 <tr>
-//                   <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
-//                     Loading organizations...
-//                   </td>
-//                 </tr>
-//               ) : isError ? (
-//                 <tr>
-//                   <td colSpan={8} className="px-4 py-6 text-center text-red-500">
-//                     {error?.message || "Failed to load organizations"}
-//                   </td>
-//                 </tr>
-//               ) : companies.length === 0 ? (
-//                 <tr>
-//                   <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
-//                     No organizations found
-//                   </td>
-//                 </tr>
-//               ) : (
-//                 companies.map((company) => {
-//                   const id = company.id ?? company.companyId;
-//                   const number = company.number ?? company.phone ?? company.contactNumber ?? "";
-//                   const created = company.createdAt ?? company.createAt ?? "";
-
-//                   return (
-//                     <tr
-//                       key={id}
-//                       className="border-t hover:bg-gray-50 transition cursor-pointer"
-//                       onClick={() => handleRowClick(company)}
-//                     >
-//                       <td className="px-4 py-3">{id}</td>
-//                       <td className="px-4 py-3 font-medium">{company.name}</td>
-//                       <td className="px-4 py-3">{company.address}</td>
-//                       <td className="px-4 py-3">{number}</td>
-//                       <td className="px-4 py-3">{company.email}</td>
-//                       <td className="px-4 py-3">{created ? String(created).slice(0, 10) : ""}</td>
-//                       <td className="px-4 py-3">
-//                         <i
-//                           className="fa-solid text-[18px] cursor-pointer fa-pen-to-square"
-//                           onClick={(e) => {
-//                             e.stopPropagation();
-//                             handleEdit(company);
-//                           }}
-//                         ></i>
-//                       </td>
-//                       <td className="px-4 py-3 text-center">
-//                         <i
-//                           className={`fa-solid fa-trash text-red-500 cursor-pointer hover:text-red-700 transition ${isDeleting ? "opacity-50 pointer-events-none" : ""}`}
-//                           onClick={(e) => {
-//                             e.stopPropagation();
-//                             handleDelete(id);
-//                           }}
-//                           title="Delete company"
-//                         ></i>
-//                       </td>
-//                     </tr>
-//                   );
-//                 })
-//               )}
-//             </tbody>
-//           </table>
-//         </div>
-//       </div>
-//       {open && <RegisterCompany open={open} setOpen={setOpen} />}
-//       {editOpen && selectedCompany && (
-//         <UpdateCompany open={editOpen} setOpen={setEditOpen} company={selectedCompany} />
-//       )}
-//     </div>
-//   );
-// }
-
-// export default Company;
-
-
 import React, { useState } from "react";
 import Navbar from "./Navbar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -366,16 +15,27 @@ function Company() {
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch companies
+  // Search companies function
+  const searchCompanies = async (query) => {
+    const res = await fetch(apiUrl(`company/search?query=${encodeURIComponent(query)}`));
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(data?.message || "Failed to search companies");
+    }
+    return data.companies || [];
+  };
+
+  // Fetch companies with search
   const {
     data: companies = [],
     isLoading,
     isError,
     error,
   } = useQuery({
-    queryKey: ["organizations"],
-    queryFn: getOrganizations,
+    queryKey: ["organizations", searchQuery],
+    queryFn: () => searchQuery ? searchCompanies(searchQuery) : getOrganizations(),
   });
 
   // Delete company API
@@ -696,16 +356,32 @@ function Company() {
             </p>
           </div>
 
-          <button
-            className="group relative bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-300 transform hover:-translate-y-1"
-            onClick={() => setOpen(true)}
-          >
-            <span className="relative z-10 flex items-center gap-2">
-              <span className="text-xl">+</span>
-              Register New Company
-            </span>
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500"></div>
-          </button>
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+            {/* Search Input */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search by ID, name, or number..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full md:w-64 px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="text-gray-400">🔍</span>
+              </div>
+            </div>
+
+            <button
+              className="group relative bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-300 transform hover:-translate-y-1"
+              onClick={() => setOpen(true)}
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                <span className="text-xl">+</span>
+                Register New Company
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500"></div>
+            </button>
+          </div>
         </div>
 
         {/* Stats Summary */}

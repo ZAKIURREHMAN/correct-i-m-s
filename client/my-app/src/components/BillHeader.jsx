@@ -17,6 +17,9 @@ function BillHeader({
   items = [],
   discount = 0,
   totalLabel = 'Total Amount',
+  // Payment info
+  paidAmount = 0,
+  pendingAmount = 0,
 }) {
   const numberFmt = (n) => {
     const num = Number(n || 0)
@@ -165,6 +168,21 @@ function BillHeader({
               <span>{Icon.totalTax} Total Tax Amount</span>
              </div>
 
+            {/* Payment Information */}
+            {paidAmount > 0 && (
+              <div className="flex justify-between border-t pt-2">
+                <span>💰 Amount Paid</span>
+                <span>PKR {numberFmt(paidAmount)}</span>
+              </div>
+            )}
+            
+            {pendingAmount > 0 && (
+              <div className="flex justify-between text-orange-600">
+                <span>⏳ Pending Amount</span>
+                <span>PKR {numberFmt(pendingAmount)}</span>
+              </div>
+            )}
+            
             <div className="flex justify-between font-bold text-lg border-t pt-2">
               <span>{Icon.total} {totalLabel}</span>
               <span>PKR {numberFmt(grandTotal)}</span>

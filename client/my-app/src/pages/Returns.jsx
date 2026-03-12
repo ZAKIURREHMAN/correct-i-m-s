@@ -181,7 +181,7 @@ function Returns() {
       <Navbar />
 
       <div className="pt-8 px-4 sm:px-6 lg:px-8 pb-12 no-print">
-        <div className="max-w-4xl mx-auto">
+        <div className="">
           <h1 className="text-3xl font-bold text-gray-800">Product Returns</h1>
           <p className="mt-2 text-gray-600">Look up an order and return purchased items.</p>
 
@@ -235,11 +235,17 @@ function Returns() {
                     <thead className="bg-indigo-50 text-indigo-700 uppercase text-xs tracking-wide">
                       <tr>
                         <th className="px-6 py-3 text-left">Item ID</th>
+                        <th className="px-6 py-3 text-left">Date</th>
+                        <th className="px-6 py-3 text-left">Time</th>
                         <th className="px-6 py-3 text-left">Product</th>
                         <th className="px-6 py-3 text-left">Qty Purchased</th>
                         <th className="px-6 py-3 text-left">Unit Price</th>
                         <th className="px-6 py-3 text-left">SubTotal</th>
                         <th className="px-6 py-3 text-left">Return Qty</th>
+
+
+                         {/* <th className="px-6 py-3 text-left">Date</th>
+                        <th className="px-6 py-3 text-left">Time</th> */}
                       </tr>
                     </thead>
                     <tbody>
@@ -250,7 +256,12 @@ function Returns() {
                       ) : (
                         items.map((it) => (
                           <tr key={it.orderItemId} className="border-t border-indigo-100 hover:bg-indigo-50 transition-colors">
+                            {
+                              console.log("this is it",it.createAt)
+                            }
                             <td className="px-6 py-3">{it.orderItemId}</td>
+                            <td className="px-6 py-3">{it.createAt.split('T')[0]}</td>
+                            <td className="px-6 py-3">{it.createAt.split('T')[1].split('.')[0]}</td>
                             <td className="px-6 py-3">{it?.product?.name || `#${it.productId}`}</td>
                             <td className="px-6 py-3">{it.quantity}</td>
                             <td className="px-6 py-3">{formatCurrency(it.customizePrise)}</td>

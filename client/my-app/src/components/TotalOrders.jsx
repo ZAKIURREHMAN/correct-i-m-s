@@ -1,11 +1,15 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import Navbar from "./Navbar";
 import useOrders from "../hooks/useOrders";
 import Swal from "sweetalert2";
+import { useNavigate } from "react-router-dom";
 
 function formatCurrency(val) {
   const num = Number(val) || 0;
-  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function formatDateTime(dt) {
@@ -16,20 +20,40 @@ function formatDateTime(dt) {
 }
 
 function escapeHtml(str) {
-  return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;");
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function TotalOrders() {
+  const navigate = useNavigate()
   const { data: orders, isLoading, isError, error } = useOrders();
 
-  const rows = useMemo(() => (Array.isArray(orders) ? orders : []), [orders]);
+  const [search, setSearch] = useState("");
+
+  const rows = useMemo(() => {
+    if (!Array.isArray(orders)) return [];
+
+    return orders.filter(
+      (order) =>
+        order?.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        String(order?.orderId).includes(search)
+    );
+  }, [orders, search]);
 
   const handleRowClick = (order) => {
     const items = Array.isArray(order?.ordersItems) ? order.ordersItems : [];
-    const totalQty = items.reduce((sum, it) => sum + (Number(it?.quantity) || 0), 0);
+    const totalQty = items.reduce(
+      (sum, it) => sum + (Number(it?.quantity) || 0),
+      0
+    );
     const itemCount = items.length;
 
     const cust = order?.customer || {};
+
     const customerHtml = `
       <div style="margin-bottom:16px;">
         <h3 style="margin:0 0 8px 0;color:#4f46e5;">Customer Details</h3>
@@ -48,11 +72,17 @@ function TotalOrders() {
         <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
           <div><strong>Items:</strong> ${itemCount}</div>
           <div><strong>Total Qty:</strong> ${totalQty}</div>
-          <div><strong>Total Price:</strong> ${escapeHtml(formatCurrency(order?.totalPrice))}</div>
+          <div><strong>Total Price:</strong> ${escapeHtml(
+            formatCurrency(order?.totalPrice)
+          )}</div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px;">
-          <div><strong>Created:</strong> ${escapeHtml(formatDateTime(order?.createAt))}</div>
-          <div><strong>Updated:</strong> ${escapeHtml(formatDateTime(order?.updateAt))}</div>
+          <div><strong>Created:</strong> ${escapeHtml(
+            formatDateTime(order?.createAt)
+          )}</div>
+          <div><strong>Updated:</strong> ${escapeHtml(
+            formatDateTime(order?.updateAt)
+          )}</div>
         </div>
       </div>
     `;
@@ -78,6 +108,7 @@ function TotalOrders() {
         const cp = escapeHtml(formatCurrency(it?.customizePrise));
         const st = escapeHtml(formatCurrency(it?.subTotal));
         const ct = escapeHtml(formatDateTime(it?.createAt));
+
         return `
           <tr style="border-top:1px solid #e0e7ff;">
             <td style="padding:8px 12px;">${pid}</td>
@@ -91,11 +122,15 @@ function TotalOrders() {
       })
       .join("");
 
-    const itemsTable = items.length === 0
-      ? '<p style="color:#4b5563;">No items in this order.</p>'
-      : `
+    const itemsTable =
+      items.length === 0
+        ? '<p style="color:#4b5563;">No items in this order.</p>'
+        : `
         <div style="max-height:45vh;overflow:auto;">
-          <table style="width:100%;font-size:14px;color:#111827;">${itemsHead}<tbody>${itemsRows}</tbody></table>
+          <table style="width:100%;font-size:14px;color:#111827;">
+          ${itemsHead}
+          <tbody>${itemsRows}</tbody>
+          </table>
         </div>
       `;
 
@@ -114,8 +149,13 @@ function TotalOrders() {
       title: `Order #${order.orderId} — Details`,
       width: "64rem",
       html,
-      showConfirmButton: true,
-      confirmButtonText: "Close",
+      showCancelButton: true,
+      confirmButtonText: "Buy New Product",
+      cancelButtonText: "Close",
+    }).then((success)=>{ 
+      if(success.isConfirmed){ 
+        navigate(`/order-items/new?customerId=${order?.customerId || order?.customer?.customerId || ""}`); 
+      } 
     });
   };
 
@@ -126,33 +166,55 @@ function TotalOrders() {
       <div className="mt-10 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-gray-700">Total Orders</h2>
+
+          <input
+            type="text"
+            placeholder="Search order or customer..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
         </div>
 
         <div className="table-scroll bg-white shadow-sm rounded-xl border border-indigo-200">
           {isLoading ? (
             <div className="p-6 text-center text-gray-500">Loading orders…</div>
           ) : isError ? (
-            <div className="p-6 text-center text-red-600">{error?.message || "Failed to load orders"}</div>
+            <div className="p-6 text-center text-red-600">
+              {error?.message || "Failed to load orders"}
+            </div>
           ) : rows.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">No orders found.</div>
+            <div className="p-6 text-center text-gray-500">
+              No orders found.
+            </div>
           ) : (
             <table className="w-full text-sm text-left">
               <thead className="bg-indigo-50 text-indigo-700 uppercase text-xs tracking-wide">
                 <tr>
                   <th className="px-6 py-3">Order ID</th>
+                  <th className="px-6 py-3">Customer ID</th>
                   <th className="px-6 py-3">Customer</th>
                   <th className="px-6 py-3">Items</th>
                   <th className="px-6 py-3">Total Qty</th>
                   <th className="px-6 py-3">Total</th>
                   <th className="px-6 py-3">Created</th>
-                  <th className="px-6 py-3">Updated</th>
+                  {/* <th className="px-6 py-3">Updated</th> */}
                 </tr>
               </thead>
+
               <tbody>
                 {rows.map((order) => {
-                  const items = Array.isArray(order?.ordersItems) ? order.ordersItems : [];
+                  const items = Array.isArray(order?.ordersItems)
+                    ? order.ordersItems
+                    : [];
+
                   const itemCount = items.length;
-                  const totalQty = items.reduce((sum, it) => sum + (Number(it?.quantity) || 0), 0);
+
+                  const totalQty = items.reduce(
+                    (sum, it) => sum + (Number(it?.quantity) || 0),
+                    0
+                  );
+
                   return (
                     <tr
                       key={order.orderId}
@@ -161,12 +223,23 @@ function TotalOrders() {
                       onClick={() => handleRowClick(order)}
                     >
                       <td className="px-6 py-3">{order.orderId}</td>
-                      <td className="px-6 py-3">{order?.customer?.name || "-"}</td>
+                      <td className="px-6 py-3">
+                        {order?.customerId || order?.customer?.customerId || "-"}
+                      </td>
+                      <td className="px-6 py-3">
+                        {order?.customer?.name || "-"}
+                      </td>
                       <td className="px-6 py-3">{itemCount}</td>
                       <td className="px-6 py-3">{totalQty}</td>
-                      <td className="px-6 py-3 font-semibold">{formatCurrency(order?.totalPrice)}</td>
-                      <td className="px-6 py-3">{formatDateTime(order?.createAt)}</td>
-                      <td className="px-6 py-3">{formatDateTime(order?.updateAt)}</td>
+                      <td className="px-6 py-3 font-semibold">
+                        {formatCurrency(order?.totalPrice)}
+                      </td>
+                      <td className="px-6 py-3">
+                        {formatDateTime(order?.createAt)}
+                      </td>
+                      {/* <td className="px-6 py-3">
+                        {formatDateTime(order?.updateAt)}
+                      </td> */}
                     </tr>
                   );
                 })}

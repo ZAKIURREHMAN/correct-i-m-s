@@ -1,20 +1,64 @@
 import { prisma } from "../config/db.js";
 
-export const createOrder = async ({ customerId, totalPrice }) => {
+export const createOrder = async ({ customerId, totalPrice, paidAmount = 0 }) => {
   // Verify customer exists
   const customer = await prisma.customer.findUnique({ where: { customerId } });
   if (!customer) {
     return { status: 404, message: "Customer not found" };
   }
 
+  // Validate payment amount
+  if (paidAmount < 0) {
+    return { status: 400, message: "Paid amount cannot be negative" };
+  }
+  
+  if (paidAmount > totalPrice) {
+    return { status: 400, message: "Paid amount cannot exceed total price" };
+  }
+
+  // Calculate pending amount
+  const pendingAmount = totalPrice - paidAmount;
+  const isPaid = pendingAmount === 0;
+
+  // Check if customer already has an existing order
+  const existingOrder = await prisma.orders.findFirst({
+    where: { customerId },
+    orderBy: { createAt: 'desc' }
+  });
+
+  // If customer has existing order, update it instead of creating new one
+  if (existingOrder) {
+    const updatedOrder = await prisma.orders.update({
+      where: { orderId: existingOrder.orderId },
+      data: {
+        totalPrice: existingOrder.totalPrice + totalPrice,
+        paidAmount: existingOrder.paidAmount + paidAmount,
+        pendingAmount: existingOrder.pendingAmount + pendingAmount,
+        isPaid: existingOrder.isPaid && isPaid,
+        updateAt: new Date()
+      },
+    });
+
+    return { 
+      status: 200, 
+      message: "order updated successfully (added to existing order)", 
+      data: updatedOrder,
+      existingOrder: true
+    };
+  }
+
+  // Create new order for new customer
   const order = await prisma.orders.create({
     data: {
       customerId,
       totalPrice,
+      paidAmount,
+      pendingAmount,
+      isPaid,
     },
   });
 
-  return { status: 201, message: "order created successfully", data: order };
+  return { status: 201, message: "order created successfully", data: order, existingOrder: false };
 };
 
 export const updateOrder = async ({ orderId, customerId, totalPrice }) => {
@@ -81,4 +125,51 @@ export const getOrderById = async ({ orderId }) => {
     return { status: 404, message: "Order not found" };
   }
   return { status: 200, message: "order fetched successfully", data: order };
+};
+
+export const searchOrders = async ({ query }) => {
+  if (!query) {
+    const orders = await prisma.orders.findMany({
+      orderBy: { createAt: "desc" },
+      include: {
+        customer: true,
+        ordersItems: {
+          include: {
+            product: true,
+            customer: true,
+          },
+        },
+      },
+    });
+    return { status: 200, message: "orders fetched successfully", data: orders };
+  }
+
+  // Try to parse as number for ID search
+  const idQuery = parseInt(query);
+  const isNumericId = !isNaN(idQuery);
+
+  const orders = await prisma.orders.findMany({
+    where: {
+      OR: [
+        // Search by order ID (only if query is numeric)
+        ...(isNumericId ? [{ orderId: { equals: idQuery } }] : []),
+        // Search by customer name (case insensitive)
+        { customer: { name: { contains: query.toLowerCase() } } },
+        // Search by customer number/contact (case insensitive)
+        { customer: { number: { contains: query.toLowerCase() } } },
+      ],
+    },
+    orderBy: { createAt: "desc" },
+    include: {
+      customer: true,
+      ordersItems: {
+        include: {
+          product: true,
+          customer: true,
+        },
+      },
+    },
+  });
+
+  return { status: 200, message: "orders fetched successfully", data: orders };
 };

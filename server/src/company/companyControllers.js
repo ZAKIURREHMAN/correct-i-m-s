@@ -1,4 +1,4 @@
-import { createCompany as createCompanyHandler, updateCompany as updateCompanyHandler, deleteCompany as deleteCompanyHandler, getOrganizations as getOrganizationsHandler } from "./companyHandlers.js";
+import { createCompany as createCompanyHandler, updateCompany as updateCompanyHandler, deleteCompany as deleteCompanyHandler, getOrganizations as getOrganizationsHandler, searchCompanies as searchCompaniesHandler } from "./companyHandlers.js";
 import { createSupplier as createSupplierHandler, updateSupplier as updateSupplierHandler, deleteSupplier as deleteSupplierHandler, getSuppliers as getSuppliersHandler } from "./companyHandlers.js";
 
 export const createCompany = async (req, res) => {
@@ -54,7 +54,19 @@ export const deleteCompany = async (req, res) => {
   }
 };
 
-export const getOrganizations = async (_req, res) => {
+export const searchCompanies = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    const companies = await searchCompaniesHandler({ query });
+    return res.status(200).json({ companies });
+  } catch (err) {
+    console.error("searchCompanies error", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const getOrganizations = async (req, res) => {
   try {
     const companies = await getOrganizationsHandler();
     return res.status(200).json({ companies });

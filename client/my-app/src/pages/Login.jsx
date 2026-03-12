@@ -33,13 +33,16 @@ function Login() {
   const { loginUser } = useLogin();
   const muation = useMutation({
     mutationFn: ({ email, password }) => loginUser({ email, password }),
-    onSuccess: () => {
-      toastSuccess('Signed in successfully');
-      navigate('/admin-dashboard');
+    onSuccess: (result) => {
+      if (result) {
+        toastSuccess('Signed in successfully');
+        navigate('/admin-dashboard');
+      }
     },
-    onError: (err) => {
-      toastError(err?.message || 'Login failed');
-    }
+    onError: () => {
+      // Show a toast when credentials are incorrect or request fails
+      toastError('Invalid email or password');
+    },
   });
 
   const onSubmit = (data) => {
@@ -106,11 +109,7 @@ function Login() {
           >
             {muation.isPending ? "Signing In..." : "Sign In"}
           </button>
-          {muation.isError && (
-            <p className="text-sm text-red-500 mt-2">
-              {muation.error?.message || "Login failed"}
-            </p>
-          )}
+          {/* No inline server error message; using toast instead */}
         </form>
 
         {/* Footer */}
