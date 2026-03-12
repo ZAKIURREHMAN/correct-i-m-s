@@ -197,6 +197,7 @@ function TotalOrders() {
                   <th className="px-6 py-3">Items</th>
                   <th className="px-6 py-3">Total Qty</th>
                   <th className="px-6 py-3">Total</th>
+                  <th className="px-6 py-3">Pending</th>
                   <th className="px-6 py-3">Created</th>
                   {/* <th className="px-6 py-3">Updated</th> */}
                 </tr>
@@ -233,6 +234,9 @@ function TotalOrders() {
                       <td className="px-6 py-3">{totalQty}</td>
                       <td className="px-6 py-3 font-semibold">
                         {formatCurrency(order?.totalPrice)}
+                      </td>
+                      <td className="px-6 py-3">
+                        {formatCurrency(order?.pendingAmount)}
                       </td>
                       <td className="px-6 py-3">
                         {formatDateTime(order?.createAt)}
